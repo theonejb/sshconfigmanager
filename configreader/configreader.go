@@ -12,29 +12,27 @@ import (
 	"path"
 )
 
-type hostConfig struct {
-	lines [][]byte
-}
-
 type SshConfig struct {
 	hostConfigs []*hostConfig
 }
 
 /*
-	Split the input into sections starting with the host header. To do so, we look for two
-	Host headers in the input, and then anything between them is the token.
+Split the input into sections starting with the host header. To do so, we look for two
+Host headers in the lower cased input, and then anything between them is the token.
 
-	If we're at the EOF, we just return stuff up to the first Host header (if it is not at position zero),
-	and then at the next iteration, since we don't have any more Host headers in the input, we just return
-	everything
+If we're at the EOF and we don't have a second host header, return all remaining data. This
+is because we can't find any other host header (this being the EOF and all). Otherwise, we
+just wait till we find a second header and return all data between the first and second header.
 */
 func hostHeaderSplitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	var hostHeader []byte = []byte("Host ")
+	var hostHeader []byte = []byte("host ")
 	var firstHeaderIndex, secondHeaderIndex int
 
-	firstHeaderIndex = bytes.Index(data, hostHeader)
+	lowerCasedData := bytes.ToLower(data)
+	firstHeaderIndex = bytes.Index(lowerCasedData, hostHeader)
+	// Only check for a second header if the input data is large enough to contain it
 	if len(data) > firstHeaderIndex+len(hostHeader)+1 {
-		secondHeaderIndex = bytes.Index(data[firstHeaderIndex+1:], hostHeader)
+		secondHeaderIndex = bytes.Index(lowerCasedData[firstHeaderIndex+1:], hostHeader)
 	} else {
 		secondHeaderIndex = -1
 	}
@@ -48,34 +46,11 @@ func hostHeaderSplitFunc(data []byte, atEOF bool) (advance int, token []byte, er
 	return 0, nil, nil
 }
 
-func newHostConfig(data []byte) *hostConfig {
-	hc := &hostConfig{make([][]byte, 0)}
-
-	byteReader := bytes.NewReader(data)
-	lineSplitter := bufio.NewScanner(byteReader)
-	lineSplitter.Split(bufio.ScanLines)
-
-	for lineSplitter.Scan() {
-		line := lineSplitter.Bytes()
-		line = bytes.TrimSpace(line)
-
-		if len(line) > 0 {
-			hc.lines = append(hc.lines, line)
-		}
-	}
-
-	if lineSplitter.Err() != nil {
-		return nil
-	} else {
-		return hc
-	}
-}
-
 func NewSshConfig() *SshConfig {
 	return &SshConfig{make([]*hostConfig, 0)}
 }
 
-func (sshconfig *SshConfig) ReadConfig() error {
+func (sc *SshConfig) ReadConfig() error {
 	currentUser, err := user.Current()
 	if err != nil {
 		fmt.Printf("Error in getting current user. Error: %s\n", err.Error())
@@ -98,7 +73,7 @@ func (sshconfig *SshConfig) ReadConfig() error {
 		hostConfigSection := fileScanner.Bytes()
 		hostConfig := newHostConfig(hostConfigSection)
 
-		sshconfig.hostConfigs = append(sshconfig.hostConfigs, hostConfig)
+		sc.hostConfigs = append(sc.hostConfigs, hostConfig)
 	}
 	err = fileScanner.Err()
 	if err != nil {
@@ -109,13 +84,8 @@ func (sshconfig *SshConfig) ReadConfig() error {
 	return nil
 }
 
-func (sshconfig *SshConfig) PrintCurrentConfig() {
-	for _, hostConfig := range sshconfig.hostConfigs {
-		fmt.Println("Starting new Host section")
-		fmt.Println("********************************************************************************")
-		for _, line := range hostConfig.lines {
-			fmt.Println(string(line))
-		}
-		fmt.Println("********************************************************************************")
+func (sc *SshConfig) PrintCurrentConfig() {
+	for _, hostConfig := range sc.hostConfigs {
+		hostConfig.PrintConfig()
 	}
 }
