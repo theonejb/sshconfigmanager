@@ -22,6 +22,7 @@ Holds the config for a Host section. Fields are:
 	Host section from a config file, only a select few fields.
 */
 type hostConfig struct {
+	id           int
 	name         []byte
 	hostName     []byte
 	port         []byte
@@ -32,8 +33,9 @@ type hostConfig struct {
 	indentString string
 }
 
-func newHostConfig(data []byte) *hostConfig {
+func newHostConfig(data []byte, id int) *hostConfig {
 	hc := &hostConfig{
+		id:           id,
 		otherLines:   make([][]byte, 0),
 		indentString: "  ",
 	}
@@ -54,7 +56,7 @@ func newHostConfig(data []byte) *hostConfig {
 	}
 }
 
-func (hc *hostConfig) SprintConfig() string {
+func (hc *hostConfig) sprintConfig() string {
 	stringParts := make([]string, 0, 5)
 
 	hostHeaderString := fmt.Sprintf("Host %s", string(hc.name))
@@ -90,9 +92,9 @@ func (hc *hostConfig) SprintConfig() string {
 	return strings.Join(stringParts, "\n")
 }
 
-func (hc *hostConfig) PrintConfig() {
+func (hc *hostConfig) printConfig() {
 	fmt.Printf("$$$$$$$$$$ %s $$$$$$$$$$\n", hc.name)
-	fmt.Println(hc.SprintConfig())
+	fmt.Println(hc.sprintConfig())
 	fmt.Println("$$$$$$$$$$$$$$$$$$$$\n")
 }
 
@@ -135,4 +137,37 @@ func (hc *hostConfig) addLineToConfig(line []byte) {
 	} else {
 		hc.otherLines = append(hc.otherLines, trimmedLine)
 	}
+}
+
+/*
+A struct to hold exported configuration for a Host Config. For now, it's an almost exact
+copy of hostConfig. But we use it so that if the hostConfig struct changes, the external
+API remains the same
+*/
+type exportedHostConfig struct {
+	Id           int
+	Name         string
+	HostName     string
+	Port         string
+	User         string
+	IdentityFile string
+	OtherLines   []string
+}
+
+func (hc *hostConfig) getExportedConfig() *exportedHostConfig {
+	ret := &exportedHostConfig{
+		Id:           hc.id,
+		Name:         string(hc.name),
+		HostName:     string(hc.hostName),
+		Port:         string(hc.port),
+		User:         string(hc.user),
+		IdentityFile: string(hc.identityFile),
+		OtherLines:   make([]string, len(hc.otherLines)),
+	}
+
+	for i, line := range hc.otherLines {
+		ret.OtherLines[i] = string(line)
+	}
+
+	return ret
 }

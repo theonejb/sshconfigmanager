@@ -67,13 +67,15 @@ func (sc *SshConfig) ReadConfig() error {
 		return err
 	}
 
+	sectionId := 1
 	fileScanner := bufio.NewScanner(configFile)
 	fileScanner.Split(hostHeaderSplitFunc)
 	for fileScanner.Scan() {
 		hostConfigSection := fileScanner.Bytes()
-		hostConfig := newHostConfig(hostConfigSection)
+		hostConfig := newHostConfig(hostConfigSection, sectionId)
 
 		sc.hostConfigs = append(sc.hostConfigs, hostConfig)
+		sectionId += 1
 	}
 	err = fileScanner.Err()
 	if err != nil {
@@ -86,6 +88,25 @@ func (sc *SshConfig) ReadConfig() error {
 
 func (sc *SshConfig) PrintCurrentConfig() {
 	for _, hostConfig := range sc.hostConfigs {
-		hostConfig.PrintConfig()
+		hostConfig.printConfig()
 	}
+}
+
+func (sc *SshConfig) GetAllHostNames() []string {
+	names := make([]string, len(sc.hostConfigs))
+	for i, hostConfig := range sc.hostConfigs {
+		names[i] = string(hostConfig.name)
+	}
+
+	return names
+}
+
+func (sc *SshConfig) GetAllHostConfigs() []*exportedHostConfig {
+	ret := make([]*exportedHostConfig, len(sc.hostConfigs))
+
+	for i, hostConfig := range sc.hostConfigs {
+		ret[i] = hostConfig.getExportedConfig()
+	}
+
+	return ret
 }
