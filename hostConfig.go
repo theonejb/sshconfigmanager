@@ -2,7 +2,7 @@
 Holds the structures and functions used to read, create, and save Host section configuration
 in a .ssh/config file
 */
-package configreader
+package sshconfigmanager
 
 import (
 	"bufio"

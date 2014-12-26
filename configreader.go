@@ -1,7 +1,7 @@
 /*
 	Provides an interface to read and write ssh config files
 */
-package configreader
+package sshconfigmanager
 
 import (
 	"bufio"
