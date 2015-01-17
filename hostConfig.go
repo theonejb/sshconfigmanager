@@ -13,6 +13,8 @@ import (
 
 /*
 Holds the config for a Host section. Fields are:
+- id: An id assigned to the config section at creation (in newHostConfig()). Used to update/delete
+  config sections
 - name: The name given with the Host header
 - hostName: If given, the actual hostname which this Host config connects to
 - port: Port

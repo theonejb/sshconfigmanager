@@ -67,6 +67,7 @@ func (sc *SshConfig) ReadConfig() error {
 		return err
 	}
 
+	// Since we're reading from a file, each section is given an incremental Id to keep track of our configs for update/delete
 	sectionId := 1
 	fileScanner := bufio.NewScanner(configFile)
 	fileScanner.Split(hostHeaderSplitFunc)
