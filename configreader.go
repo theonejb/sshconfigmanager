@@ -37,7 +37,7 @@ func hostHeaderSplitFunc(data []byte, atEOF bool) (advance int, token []byte, er
 		secondHeaderIndex = -1
 	}
 
-	if secondHeaderIndex == -1 && atEOF {
+	if secondHeaderIndex == -1 && atEOF && len(data) > 0 {
 		return len(data), data[firstHeaderIndex:], nil
 	} else if secondHeaderIndex != -1 {
 		return secondHeaderIndex + 1, data[firstHeaderIndex:secondHeaderIndex], nil
