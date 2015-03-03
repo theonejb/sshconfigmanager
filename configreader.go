@@ -1,12 +1,13 @@
 /*
-	Provides an interface to read and write ssh config files
+	Provides an interface to read and write ssh config files.
+
+	This file contains code to read ssh config files
 */
 package sshconfigmanager
 
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"os"
 	"os/user"
 	"path"
@@ -51,36 +52,22 @@ func NewSshConfig() *SshConfig {
 }
 
 func (sc *SshConfig) ReadConfig() error {
-	currentUser, err := user.Current()
+	configFile, err := getSshConfigFile()
 	if err != nil {
-		fmt.Printf("Error in getting current user. Error: %s\n", err.Error())
-		return err
-	}
-
-	homeDir := currentUser.HomeDir
-	sshDir := path.Join(homeDir, ".ssh/")
-	configFilePath := path.Join(sshDir, "config")
-
-	configFile, err := os.Open(configFilePath)
-	if err != nil {
-		fmt.Printf("Error in opening ssh config file. Path: [%s]. Error: %s\n", configFilePath, err.Error())
 		return err
 	}
 
 	// Since we're reading from a file, each section is given an incremental Id to keep track of our configs for update/delete
-	sectionId := 1
 	fileScanner := bufio.NewScanner(configFile)
 	fileScanner.Split(hostHeaderSplitFunc)
 	for fileScanner.Scan() {
 		hostConfigSection := fileScanner.Bytes()
-		hostConfig := newHostConfig(hostConfigSection, sectionId)
+		hostConfig := newHostConfig(hostConfigSection)
 
 		sc.hostConfigs = append(sc.hostConfigs, hostConfig)
-		sectionId += 1
 	}
 	err = fileScanner.Err()
 	if err != nil {
-		fmt.Printf("Error while reading ssh config file lines. Error: %s\n", err.Error())
 		return err
 	}
 
@@ -110,4 +97,32 @@ func (sc *SshConfig) GetAllHostConfigs() []*exportedHostConfig {
 	}
 
 	return ret
+}
+
+func getUserSshDir() (string, error) {
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	homeDir := currentUser.HomeDir
+	sshDir := path.Join(homeDir, ".ssh/")
+
+	return sshDir, nil
+}
+
+func getSshConfigFile() (*os.File, error) {
+	sshDir, err := getUserSshDir()
+	if err != nil {
+		return nil, err
+	}
+
+	configFilePath := path.Join(sshDir, "config")
+
+	configFile, err := os.Open(configFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	return configFile, nil
 }
