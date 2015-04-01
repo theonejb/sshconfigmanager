@@ -111,13 +111,21 @@ func getUserSshDir() (string, error) {
 	return sshDir, nil
 }
 
-func getSshConfigFile() (*os.File, error) {
+func getSshConfigFilePath() (string, error) {
 	sshDir, err := getUserSshDir()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	configFilePath := path.Join(sshDir, "config")
+	return configFilePath, nil
+}
+
+func getSshConfigFile() (*os.File, error) {
+	configFilePath, err := getSshConfigFilePath()
+	if err != nil {
+		return nil, err
+	}
 
 	configFile, err := os.Open(configFilePath)
 	if err != nil {
