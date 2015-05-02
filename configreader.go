@@ -1,19 +1,21 @@
 /*
-	Provides an interface to read and write ssh config files.
-
-	This file contains code to read ssh config files
+This file contains code to read ssh config files
 */
 package sshconfigmanager
 
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"os"
 	"os/user"
 	"path"
 )
 
 type SshConfig struct {
+	fileHash    string
 	hostConfigs []*hostConfig
 }
 
@@ -48,17 +50,23 @@ func hostHeaderSplitFunc(data []byte, atEOF bool) (advance int, token []byte, er
 }
 
 func NewSshConfig() *SshConfig {
-	return &SshConfig{make([]*hostConfig, 0)}
+	return &SshConfig{"", make([]*hostConfig, 0)}
 }
 
 func (sc *SshConfig) ReadConfig() error {
 	configFile, err := getSshConfigFile()
+	defer configFile.Close()
 	if err != nil {
 		return err
 	}
 
+	// Create a TeeReader that writes all bytes read from the config file to a SHA256 Hash instance. We calculate a hash of the
+	// file without having to read it twice
+	hasher := sha256.New()
+	configFileReader := io.TeeReader(configFile, hasher)
+
 	// Since we're reading from a file, each section is given an incremental Id to keep track of our configs for update/delete
-	fileScanner := bufio.NewScanner(configFile)
+	fileScanner := bufio.NewScanner(configFileReader)
 	fileScanner.Split(hostHeaderSplitFunc)
 	for fileScanner.Scan() {
 		hostConfigSection := fileScanner.Bytes()
@@ -71,6 +79,7 @@ func (sc *SshConfig) ReadConfig() error {
 		return err
 	}
 
+	sc.fileHash = hex.EncodeToString(hasher.Sum(nil))
 	return nil
 }
 
@@ -89,11 +98,19 @@ func (sc *SshConfig) GetAllHostNames() []string {
 	return names
 }
 
-func (sc *SshConfig) GetAllHostConfigs() []*exportedHostConfig {
-	ret := make([]*exportedHostConfig, len(sc.hostConfigs))
+type ExportedSshConfig struct {
+	FileHash    string
+	HostConfigs []*exportedHostConfig
+}
+
+func (sc *SshConfig) ExportFileContents() *ExportedSshConfig {
+	ret := &ExportedSshConfig{
+		FileHash:    sc.fileHash,
+		HostConfigs: make([]*exportedHostConfig, len(sc.hostConfigs)),
+	}
 
 	for i, hostConfig := range sc.hostConfigs {
-		ret[i] = hostConfig.getExportedConfig()
+		ret.HostConfigs[i] = hostConfig.getExportedConfig()
 	}
 
 	return ret

@@ -181,7 +181,6 @@ type exportedHostConfig struct {
 	User         string
 	IdentityFile string
 	OtherLines   []string
-	Hash         string
 }
 
 func (hc *hostConfig) getExportedConfig() *exportedHostConfig {
